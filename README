@@ -1,0 +1,11 @@
+This directory should contain example python programs.
+
+For an execellent introduction to Python see:
+http://docs.python.org/2/tutorial/introduction.html
+
+This activity was spun off as Python is widely used in introductory
+courses to electrical engineering and computer sceience.
+See: http://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-01sc-introduction-to-electrical-engineering-and-computer-science-i-spring-2011/Syllabus/
+
+Python comes with IDLE, a graphical program edititin environment. 
+There is some effort to make this work on cygwin, revertin to using Emacs...
