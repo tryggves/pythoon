@@ -2,9 +2,9 @@
 
 # TODO: The handling of node names in the input is limited to names starting with 'lmig'.
 # This is awkward and should be fixed.
-# TODO: Default user name is fixed at trysoe, use the whoami method to query system 
-# for currently logged in user.
-# TODO: Option to search nodes for iTEM processes owned by any user.
+
+# iTEMproc.py Release 1.1
+# Support node list from file rather than querying SGE using qconf command
 
 import sys
 import getopt
@@ -12,13 +12,15 @@ import subprocess
 import getpass
 
 def usage():
-    Usage = """Usage:  iTEMproc.py  [-a|--allproc] [-h|--help] [[-p|--procfile=] filename] [-l|--list] [[-u|--user=] username] [-v|--version]
+    Usage = """Usage:  iTEMproc.py  [-a|--allproc] [-h|--help] [[-p|--procfile=]|[-n|--nodefile] filename]
+               [-l|--list] [[-u|--user=] username] [-v|--version]
                  options:
                     -a|--allproc                    list all iTEM processes for any user. This ignores
                                                     the option -u. This option will not attempt to kill any
                                                     processes (implies option -l|--list).
                     -h|--help                       print this usage
                     -p|--procfile= filename         provide list of node/processes in file with filename
+                    -n|--nodefile= filename         provide list of nodes in file with name filename
                     -l|--list                       list the nodes and your iTEM processes
                                                     but don't remove them
                     -u|--user= username             look for iTEM processes owned by username
@@ -38,6 +40,11 @@ def usage():
                 by the -l|--list option. Hence, you can first execute this program with the -l|--list option,
                 save the output to file, optionally edit the file and finally call this program with the
                 -p|--procfile option to have more control over the processes you want to kill.
+
+                Option -n|--nodefile will take the list of node hostnames as input for searching processes
+                instead of quering for the node names in the EM queue. Hence you can provide your own list
+                of nodes where you want to search/kill your processes.
+                Note! Options -p|--procfile and -n|--nodefile are mutually exclusive.
 
                 Option -u|--username allows you to input the user name whose iTEM processes you are looking
                 for. Normally, this would be yourself (this is the default if you don't specify any) as you
@@ -190,32 +197,39 @@ def getProcesses(nodelist, user):
 # Get the list of nodes in the EM queue and make a file where 
 # each node is put on one line.
 def getNodes():
-    "Get the list of nodes in the EM queue and make a list  where \
-    each element contains the node name. This list is returned from the function."
-
-    # Call the SGE qconf command to get the list of nodes for the EM queue
-    proc = subprocess.Popen(['qconf','-shgrp', '@lem20c128g'], stdout=subprocess.PIPE)
-    nodes = proc.stdout.readlines()
-    numlines = len(nodes)
+    """Get the list of nodes in the EM queue and make a list  where 
+    each element contains the node name. This list is returned from the function."""
+    
     nodelist = []
-    i = 0
-    while i<numlines:
-        line = nodes[i]
-        # This is normally the first line - skip it
-        if line.startswith('group_name'):
-            i = i+1
-            continue
-        else:
-            # Shread off the first word and then tread the rest as host names
-            hostnames = line.split()
-            for name in hostnames:
-                # Skip the beginning hostlist and trailing \ and treat the rest as real hosts
-                if (name in ('hostlist', '\\')): continue
-                else:
-                    nodelist.append(name)
 
-            # Advance to the next line
-            i = i+1
+    if (_usenodefile):
+        # Get all the nodes from file
+        myfile = open (nodefile, "r")
+        for nextline in myfile:
+            nodelist.append(nextline.rstrip('\n'))
+    else:
+        # Call the SGE qconf command to get the list of nodes for the EM queue
+        proc = subprocess.Popen(['qconf','-shgrp', '@lem20c128g'], stdout=subprocess.PIPE)
+        nodes = proc.stdout.readlines()
+        numlines = len(nodes)
+        i = 0
+        while i<numlines:
+            line = nodes[i]
+            # This is normally the first line - skip it
+            if line.startswith('group_name'):
+                i = i+1
+                continue
+            else:
+                # Shread off the first word and then tread the rest as host names
+                hostnames = line.split()
+                for name in hostnames:
+                    # Skip the beginning hostlist and trailing \ and treat the rest as real hosts
+                    if (name in ('hostlist', '\\')): continue
+                    else:
+                        nodelist.append(name)
+
+                # Advance to the next line
+                i = i+1
             
     # Done with all the lines - return list
     return nodelist
@@ -224,17 +238,24 @@ def getNodes():
     
 # This is the main program
 def main(argv):
-    versioninfo = "iTEMproc.py Version 1.0 2017-01-30"
-    procfile = ""
+    versioninfo = "iTEMproc.py Version 1.1_alpha 2017-02-03"
     username = getpass.getuser()
-    global _listProcesses
+    global _listProcesses    # Option -l|--list
     _listProcesses = 0
-    global _allProcesses
+    global _allProcesses     # Option -a|--allprocs
     _allProcesses = 0
+    global _useprocfile      # Option -p|--procfile
+    _useprocfile = 0
+    procfile = ""
+    global _usenodefile      # Option -n|--nodefile
+    _usenodefile = 0
+    global nodefile
+    nodefile = ""
+    
 
     # Parse parameters.
     try:
-        opts, args = getopt.getopt(argv, "ahp:lu:v", ["allproc", "help", "procfile=", "list", "user=", "version"])
+        opts, args = getopt.getopt(argv, "ahp:n:lu:v", ["allproc", "help", "procfile=", "nodefile=", "list", "user=", "version"])
     except getopt.GetoptError:
         print "ERROR: Unknown option\n"
         usage()
@@ -249,7 +270,20 @@ def main(argv):
             usage()
             sys.exit()
         elif opt in ("-p", "--procfile"):
+            if (_usenodefile):
+                print "Don't use option -p|--procfile and -n|--nodefile at the same time!\n"
+                usage()
+                sys.exit(2)
+            _useprocfile = 1
             procfile = arg
+        elif opt in ("-n", "--nodefile"):
+            if (_useprocfile):
+                print "Don't use option -p|--procfile and -n|--nodefile at the same time!\n"
+                usage()
+                sys.exit(2)
+            _usenodefile = 1
+            nodefile = arg
+            
         elif opt in ("-l", "--list"):
             _listProcesses = 1
         elif opt in ('-u', "--user"):
