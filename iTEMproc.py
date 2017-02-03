@@ -203,7 +203,8 @@ def getNodes():
     nodelist = []
 
     if (_usenodefile):
-        # Get all the nodes from file
+        # Get all the nodes from file.
+        # Format is one node hostname per line.
         myfile = open (nodefile, "r")
         for nextline in myfile:
             nodelist.append(nextline.rstrip('\n'))
