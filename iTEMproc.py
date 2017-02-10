@@ -197,8 +197,13 @@ def getProcesses(nodelist, user):
 # Get the list of nodes in the EM queue and make a file where 
 # each node is put on one line.
 def getNodes():
-    """Get the list of nodes in the EM queue and make a list  where 
-    each element contains the node name. This list is returned from the function."""
+    """Get the list of nodes in the EM queue.
+    Return value is list  where each element contains the node name. 
+    The node names are either retrieved from the queueing system using the
+    qconf command - or from a text file.
+    Format of file is one node name per line where node name is the first
+    word on the line (words separated by whitespace). Typically this kind 
+    of file is the output from --cleanup option to the mpirun command."""
     
     nodelist = []
 
@@ -207,7 +212,10 @@ def getNodes():
         # Format is one node hostname per line.
         myfile = open (nodefile, "r")
         for nextline in myfile:
-            nodelist.append(nextline.rstrip('\n'))
+            mywords = nextline.split()
+            nodelist.append(mywords[0])
+
+        print "Got %d nodes from input file: %s" % (len(nodelist), nodefile)
     else:
         # Call the SGE qconf command to get the list of nodes for the EM queue
         proc = subprocess.Popen(['qconf','-shgrp', '@lem20c128g'], stdout=subprocess.PIPE)
@@ -231,7 +239,8 @@ def getNodes():
 
                 # Advance to the next line
                 i = i+1
-            
+        print "Got %d nodes in EM queue." % (len(nodelist))
+
     # Done with all the lines - return list
     return nodelist
 
@@ -239,7 +248,7 @@ def getNodes():
     
 # This is the main program
 def main(argv):
-    versioninfo = "iTEMproc.py Version 1.1_alpha 2017-02-03"
+    versioninfo = "iTEMproc.py Version 1.1 2017-02-10"
     username = getpass.getuser()
     global _listProcesses    # Option -l|--list
     _listProcesses = 0
@@ -313,7 +322,6 @@ def main(argv):
         killprocesses_fromfile(procfile, username)
         sys.exit(0)
 
-    print "Got %d nodes in EM queue." % (len(nodelist))
     if (not _allProcesses):
         print "Look for processes owned by " + username + "..."
     else:
