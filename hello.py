@@ -1,4 +1,7 @@
 #!/usr/bin/python
+
+# coding=Latin-1
+
 print "hello world!"
 print """
 Here are some fundamental programming constructs
@@ -22,6 +25,6 @@ else:
     print 'More'
 
 # Here are list examples
-list1 = ['per', 'pål', 'espen askeladd']
+list1 = ['per', 'pal', 'espen askeladd']
 
 print list1
