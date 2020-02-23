@@ -17,10 +17,17 @@ with open("./commits.json", "r") as read_file:
     data = json.load(read_file)
 
 print("Number of objects: ", len(data))
-count = 0
-for entry in data:
-    count = count+1
-    print("Entry num: ", count, "\tEntry length: ", len(entry))
+# count = 0
+# for entry in data:
+#    count = count+1
+#    print("Entry num: ", count, "\tEntry length: ", len(entry))
 
-print(data[1])
+entry = data[1]
+print("Entry type: ", type(entry))
+# print(entry)
+
+# Iterate through entry
+for item in entry:
+    print("Item of type: ", type(item), "\tContent: ", item)
+    print(item, " : ", entry[item])
 print("Done.")
